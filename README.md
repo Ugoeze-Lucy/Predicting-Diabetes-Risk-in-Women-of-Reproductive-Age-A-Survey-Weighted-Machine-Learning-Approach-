@@ -69,45 +69,29 @@ Thirteen files were merged on the respondent ID (`SEQN`):
 
 ## Project Structure
 
+```
 nhanes-diabetes-risk/
-
 ├── R/
-
 │   ├── 01_load_merge.R
-
 │   ├── 02_population_definition.R
-
 │   ├── 03_outcome_definition.R
-
 │   ├── 04_variable_selection.R
-
 │   ├── 05_imputation.R
-
 │   ├── 06_survey_design.R
-
 │   ├── 07_descriptive_analysis.R
-
 │   └── 08_logistic_regression.R
-
 ├── python/
-
 │   ├── 09_ml_modelling.ipynb
-
 │   └── 10_evaluation_shap.ipynb
-
 ├── powerbi/
-
 │   └── diabetes_dashboard.pbix
-
 ├── outputs/
-
 │   ├── figures/
-
 │   ├── tables/
-
 │   └── csv_exports/
-
 └── README.md
+```
+
 
 ## Methodology
 
@@ -242,6 +226,7 @@ A 4-page interactive dashboard was built in Power BI
 ## Author
 
 **Ugoeze Lucy Unegbu**
+
 Public Health Data Analyst | MSc Medical Statistics and Epidemiology, University of Nigeria Nsukka
 
-[LinkedIn](https://linkedin.com/in/ugoeze-lucy) · [Portfolio](ugoezelucy.netlify.app ) · [Medium](https://medium.com/@zinalucy) · [ORCID](https://orcid.org/0009-0007-4682-6333) · [GitHub](https://github.com/Ugoeze-Lucy)
+[LinkedIn](https://linkedin.com/in/ugoeze-lucy) · [Portfolio](https://ugoezelucy.netlify.app) · [Medium](https://medium.com/@zinalucy) · [ORCID](https://orcid.org/0009-0007-4682-6333) · [GitHub](https://github.com/Ugoeze-Lucy)
