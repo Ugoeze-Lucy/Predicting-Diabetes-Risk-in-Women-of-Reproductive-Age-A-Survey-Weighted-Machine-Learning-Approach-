@@ -38,8 +38,7 @@ The project deliberately uses the **same dataset across two languages** (R for s
 
 ## Why This Project
 
-NHANES is one of the largest publicly available health surveys in the world, and working with it end-to-end - from raw `.XPT` files to a published dashboard - mirrors the kind of work I want to do professionally.
-I also wanted a project that didn't pick one methodology and stop there.
+NHANES is one of the largest publicly available health surveys in the world, and working with it end-to-end from raw `.XPT` files to a published dashboard, mirrors the kind of analytical work I want to do in health system roles. I also wanted a project that didn't pick one methodology and stop there.
 
 ## Data Source
 
@@ -156,16 +155,16 @@ The fix was to split the analysis:
 
 Four models were trained in Python on the same 19 features (the full predictor set, unlike the constrained logistic regression): **Logistic Regression, Random Forest, XGBoost, and LightGBM**, each inside a pipeline with median imputation, standard scaling, and SMOTE (applied only to training folds).
 
-**Cross-validated AUC (5-fold):**
+**Model performance — discrimination and calibration:**
 
-| Model | CV AUC | Test AUC |
-|---|---|---|
-| Logistic Regression | 0.885 ± 0.061 | 0.861 |
-| Random Forest | 0.872 ± 0.073 | 0.889 |
-| XGBoost | 0.853 ± 0.078 | 0.846 |
-| LightGBM | 0.834 ± 0.078 | 0.811 |
+| Model | CV AUC | Test AUC | Brier Score |
+|---|---|---|---|
+| Logistic Regression | 0.885 ± 0.061 | 0.861 | 0.141 |
+| Random Forest | 0.872 ± 0.073 | 0.889 | 0.072 |
+| XGBoost | 0.853 ± 0.078 | 0.846 | 0.070 |
+| LightGBM | 0.834 ± 0.078 | 0.811 | 0.076 |
 
-Logistic regression won cross-validation, Random Forest won on the held-out test set - the two are close enough that this is sampling variation rather than a clear winner, and that itself says something about how linear the underlying relationships are.
+No single model dominates across both metrics. Random Forest achieved the highest test AUC (0.889) and strong calibration (Brier 0.072), making it the strongest performer for ranking individual risk. XGBoost produced the best calibration (Brier 0.070) with acceptable discrimination (AUC 0.846), if predicted probabilities need to be read as actual risk estimates rather than just rankings, XGBoost is the more honest model. Logistic Regression won cross-validation but had the worst calibration of all four (Brier 0.141), more than double the naive baseline of ~0.064. The three ensemble models were all reasonably calibrated by comparison, with Brier scores clustered tightly between 0.070 and 0.076.
 
 **SHAP analysis** on the logistic regression model produced the most interesting findings of the project:
 
@@ -173,15 +172,14 @@ Logistic regression won cross-validation, Random Forest won on the held-out test
 |---|---|---|
 | 1 | Age | 1.22 |
 | 2 | Triglycerides | 0.75 |
-| 3 | Age at first pregnancy | 0.74 |
-| 4 | Education level | 0.63 |
-| 5 | Smoking status | 0.63 |
-| 6 | LDL cholesterol | 0.60 |
-| 7 | Health insurance | 0.56 |
+| 3 | Education level | 0.63 |
+| 4 | Smoking status | 0.63 |
+| 5 | LDL cholesterol | 0.60 |
+| 6 | Health insurance | 0.56 |
 
 Age and triglycerides showing up at the top is unsurprising and confirms Phase 8. What's more interesting is **LDL cholesterol and health insurance status** - neither showed any signal in the descriptive Table 1 (p = 0.8 and p > 0.9 respectively) - yet both placed in the top 7 SHAP features. This points to non-linear or interaction effects that a simple group comparison can't pick up, but a model trained on the full feature set can.
 
-The calibration curve also showed the model is **overconfident** - predicted probabilities run higher than observed proportions, almost certainly a consequence of SMOTE inflating the effective prevalence during training. This is flagged as a limitation.
+Calibration was assessed across all four models. Logistic Regression was substantially overconfident (Brier 0.141), when it predicted a 70% probability of diabetes, observed rates were far lower. The three ensemble models were all considerably better calibrated (Brier 0.070-0.076), though still marginally above the naive baseline. SHAP analysis was run on Logistic Regression specifically because `shap.LinearExplainer` provides mathematically exact attribution for linear models, this was an interpretability choice, not a claim that it is the best predictor.
 
 ### Phase 11: Power BI Dashboard
 
@@ -191,19 +189,25 @@ A 4-page interactive dashboard was built in Power BI
 
 **Page 2 - Participant Characteristics:** side-by-side comparison of age, BMI, waist circumference, triglycerides, HDL, and systolic blood pressure between diabetic and non-diabetic women.
 
-**Page 3 - Model Performance:** AUC comparison across all 4 models (CV vs test), ROC curves, a full performance metrics table (sensitivity, specificity, PPV, NPV, Brier score), and a confusion matrix with conditional formatting.
+**Page 3 - Model Performance:** AUC comparison across all 4 models (CV vs test), calibration curves for all four models with Brier scores, ROC curves, a full performance metrics table (sensitivity, specificity, PPV, NPV, Brier score), and a confusion matrix with conditional formatting.
 
 **Page 4 - SHAP and Risk Factors:** the full 19-feature SHAP importance ranking plus individual dependence plots for age, triglycerides, education, and smoking status, showing exactly how each feature's value relates to its impact on the prediction.
 
 ## Key Findings
 
-- An estimated **4 million** US women aged 18-49 had diabetes in 2017-2018, a weighted prevalence of **5.96%**
-- **Age, BMI, triglycerides, and sedentary minutes** are independently associated with diabetes risk after adjustment
-- **Education level** shows a clear inverse gradient - prevalence drops from ~15% (9th-11th grade) to ~4% (college graduates)
-- All four ML models substantially outperform chance (AUC 0.81-0.89), with logistic regression and random forest essentially tied
-- SHAP analysis surfaced two variables - **LDL cholesterol and health insurance status** - that show no descriptive association but rank in the top 7 model features, suggesting interaction effects worth following up
-- The model is **overconfident** in its predicted probabilities
+- An estimated **4 million** US women aged 18-49 had diabetes in 2017-2018, a weighted prevalence of **5.96%** (95% CI 3.77-8.15%), representing roughly 1 in 17 women in this age group
+  
+- Diabetes prevalence ranged from **3.76%** among college graduates to **15.17%** among women with 9th-11th grade education.
 
+- **Mexican American women had the highest weighted prevalence at 9.4%**, nearly double the overall rate, consistent with known population-level disparities.
+  
+- In the adjusted regression model, **age, BMI, triglycerides, and sedentary minutes** were all independently associated with diabetes risk after mutual adjustment
+  
+- All four ML models substantially outperformed chance (test AUC 0.811-0.889). **No single model dominates across metrics**, Random Forest had the best discrimination (AUC 0.889), XGBoost had the best calibration (Brier 0.070), and Logistic Regression had the worst calibration despite winning cross-validation (Brier 0.141)
+- SHAP analysis surfaced **LDL cholesterol and health insurance**, two variables with no descriptive signal in Table 1 (both p > 0.8) as top-7 model features
+- The SHAP dependence plot for age showed a **perfectly linear relationship** crossing zero at approximately age 32-33, meaning a woman's age contribution to predicted risk switches from protective to risk-increasing somewhere in her early thirties
+- Triglycerides showed a **dose-dependent relationship** with predicted risk,even values in the borderline-high clinical range (150-200 mg/dL) meaningfully increased predicted diabetes risk
+  
 ## Dashboard Preview
 
 <img width="1296" height="728" alt="Screenshot 2026-06-13 201121" src="https://github.com/user-attachments/assets/284c5505-755e-4021-9773-8fa8274e3783" />
@@ -211,10 +215,12 @@ A 4-page interactive dashboard was built in Power BI
 
 ## Limitations
 
-- Triglycerides and fasting glucose had 55%+ missingness, so a large share of those values are imputed rather than observed
-- The adjusted logistic regression could only include 5 of 13 predictors due to the survey design's degrees-of-freedom constraint (15 strata x 2 PSUs)
-- The test set had only 19 diabetic cases, so sensitivity and PPV estimates carry wide uncertainty
-- Predicted probabilities are not calibrated and should not be read as clinical risk scores without recalibration
+- **High missingness in key variables:** triglycerides and fasting glucose both had 55%+ missingness, meaning a large share of those imputed values carry more uncertainty than observed measurements. The SHAP missInfo column confirmed 54% of statistical information for triglycerides came from imputation rather than observed data
+- **Degrees-of-freedom constraint in logistic regression:** with only 15 strata x 2 PSUs, the survey design allowed a maximum of 15 degrees of freedom for variance estimation. A fully adjusted model with all 13 predictors was not possible, residual df dropped to 1 and confidence intervals became unusable. The adjusted model was limited to 5 continuous predictors
+- **Small positive class in test set:** only 19 of 279 test observations had diabetes. Sensitivity (63.2%) and PPV (21.1%) estimates are based on these 19 cases and carry wide uncertainty, a 95% CI around sensitivity spans roughly 38% to 84%
+- **Calibration varies substantially by model:** Logistic Regression's predicted probabilities are poorly calibrated (Brier 0.141), worse than a naive model predicting population prevalence for everyone. The ensemble models are considerably better (Brier 0.070-0.076) but still not suitable as individual clinical risk scores without formal recalibration (Platt scaling or isotonic regression)
+- **Smoking variable coding artefact:** the SHAP dependence plot for smoking showed an unexpected direction, likely because the ordinal coding of SMQ040_rec (0=never, 1=every day, 2=some days, 3=former) does not represent a true linear scale. The logistic regression model treated it as continuous, which produced a coefficient in the wrong direction. This is a recoding limitation, not evidence that smoking protects against diabetes
+- **Cross-sectional design:** causal inference is not possible. All associations are observational and subject to unmeasured confounding
 
 ## Tools and Libraries
 
@@ -238,4 +244,4 @@ A 4-page interactive dashboard was built in Power BI
 **Ugoeze Lucy Unegbu**
 Public Health Data Analyst | MSc Medical Statistics and Epidemiology, University of Nigeria Nsukka
 
-[linkedin.com/in/ugoeze-lucy](#) · [ugoezelucy.netlify.app ](#) · [medium.com](#) · [https://orcid.org/my-orcid?orcid=0009-0007-4682-6333](#)
+[LinkedIn](https://linkedin.com/in/ugoeze-lucy) · [Portfolio](ugoezelucy.netlify.app ) · [Medium](https://medium.com/@zinalucy) · [ORCID](https://orcid.org/0009-0007-4682-6333) · [GitHub](https://github.com/Ugoeze-Lucy)
